@@ -9,7 +9,7 @@ X0 = 5             # Initial state
 n = 100            # Time steps
 num_realizations = 5  # Number of trajectories
 
-np.random.seed(42)  # For reproducibility
+np.random.seed(2025)  # For reproducibility
 
 # Container to hold all simulated trajectories
 trajectories = []

@@ -10,7 +10,7 @@ def simulated():
     X0 = 5
     n = 100
 
-    np.random.seed(42)
+    np.random.seed(2025)
 
     #initialize arrays
     X = np.zeros(n)
