@@ -46,11 +46,15 @@ R = 1  # observation noise variance
 X, Y = simulated()
 # Apply Kalman filter to observations Y_t
 x_pred, P_pred, innovations, S, x_filt, P_filt = myKalmanFilter(Y, theta, R, X0, P0)
-
+x_filt_lower = x_filt-1.96*np.sqrt(P_filt)
+x_filt_higher  =  x_filt+1.96*np.sqrt(P_filt)
 # Optional: plot estimate vs true
+plt.plot(x_filt_lower, label = "Conf interval", color = "black", linestyle='-',linewidth=0.5)   
+plt.plot(x_filt_higher, color = "black", linestyle='-',linewidth=0.5)
 plt.plot(X, label="True $X_t$")
 plt.plot(Y, label="Observed $Y_t$", linestyle='--')
 plt.plot(x_filt, label="Filtered Estimate $\\hat{X}_{t|t}$", linestyle='-.')
+
 plt.legend()
 plt.title("Kalman Filtering Results")
 plt.show()
