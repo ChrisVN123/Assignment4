@@ -32,13 +32,15 @@ def simulated():
 
 X,Y = simulated()
 #plotting
-plt.figure(figsize=(10, 6))
-plt.plot(X, label="$X_t$ (true state)", linewidth=2)
-plt.plot(Y, label="$Y_t$ (observed)", linestyle='--')
-plt.title("Simulation of One Realization of the State-Space Model")
-plt.xlabel("Time step")
-plt.ylabel("Value")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+if __name__ == "__main__":
+    plt.figure(figsize=(10, 6))
+    plt.plot(X, label="$X_t$ (true state)", linewidth=2)
+    plt.plot(Y, label="$Y_t$ (observed)", linestyle='--')
+    plt.title("Simulation of One Realization of the State-Space Model")
+    plt.xlabel("Time step")
+    plt.ylabel("Value")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
