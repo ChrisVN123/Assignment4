@@ -8,9 +8,7 @@ import statsmodels.api as sm
 
 raw = pd.read_csv(f"{PARENT_DIR}/transformer_data.csv")
 
-def kf_logLik_dt(params,y,U):
-    #Some adjustable params
-        # unpack
+def unpack_params(params):
     A  = params[0]
     B  = params[1:4]        # length-3 vector
     C  = params[4]
@@ -18,7 +16,12 @@ def kf_logLik_dt(params,y,U):
     R  = params[6]
     X0 = params[7]
     P0 = params[8]
-    
+    return A,B,C,Q,R,X0,P0
+
+def kf_logLik_dt(params,y,U):
+    #Some adjustable params
+        # unpack
+    A,B,C,Q,R,X0,P0 = unpack_params(params)
 
     # Allocate arrays
     n = len(y)
@@ -114,7 +117,7 @@ plt.plot(Y_pred_higher, color = "black", linestyle='-',linewidth=0.5)
 plt.plot(df["Y"], label="True $y_t$")
 plt.plot(Y_pred, label="$\\hat{Y}_{t+1|t}$", linestyle='-.')
 plt.legend()
-plt.title("Kalman Filtering Results")
+plt.title("Kalman Filtering Results (1d)")
 plt.savefig(f"{PARENT_DIR}/images/2.2/Conf_interval_1step.png")
 plt.clf()
 
@@ -163,7 +166,14 @@ info = pd.DataFrame({
 })
 info.to_csv(f"{PARENT_DIR}/images/2.2/info_criteria.csv", index=False)
 
-
+####
+unpack_params(result.x)
+A,B,C,Q,R,X0
+params = pd.DataFrame({
+    "params": ["A", "B", "C", "Q", "R", "x0",],
+    "value": [A, B, C, Q, R, X0]
+})
+params.to_csv(f"images/2.2/params.csv", index=False)
 # ------------------------------------------------------------------
 # Combined 2 × 2 chart
 # ------------------------------------------------------------------

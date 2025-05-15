@@ -214,3 +214,4 @@ ax_pacf.set_title("PACF of 1‑Step Residuals")
 
 plt.tight_layout()
 plt.savefig(f"{PARENT_DIR}/images/2.2/diagnostic_2x2.png")
+
