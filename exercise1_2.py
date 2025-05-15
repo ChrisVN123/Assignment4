@@ -1,12 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
-def simulated(a=1,b=0.9,sigma1=1,v=None):
+
+
+np.random.seed(2025)
+
+def simulated(a, b, sigma1):
     #parameters
     sigma2 = 1  
     X0 = 5
 
     n = 100
-
 
     #initialize arrays
     X = np.zeros(n)
@@ -29,9 +32,10 @@ def simulated(a=1,b=0.9,sigma1=1,v=None):
 
     return X,Y
 
-X,Y = simulated()
+
 #plotting
 if __name__ == "__main__":
+    X,Y = simulated(a=1, b=0.9, sigma1=1)
     plt.figure(figsize=(10, 6))
     plt.plot(X, label="$X_t$ (true state)", linewidth=2)
     plt.plot(Y, label="$Y_t$ (observed)", linestyle='--')
