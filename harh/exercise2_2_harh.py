@@ -165,3 +165,32 @@ info = pd.DataFrame({
     "value": [n, k, lnL, AIC, BIC]
 })
 info.to_csv(f"{PARENT_DIR}/images/2.2/info_criteria.csv", index=False)
+
+
+# ------------------------------------------------------------------
+# Combined 2 × 2 chart
+# ------------------------------------------------------------------
+lags = 40                 # or whatever you prefer
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+(ax_resid, ax_qq), (ax_acf, ax_pacf) = axes
+
+# 1) One‑step residuals
+ax_resid.plot(innovations, label="Residuals")
+ax_resid.set_title("Residuals of 1‑Step Predictions")
+ax_resid.legend()
+
+# 2) QQ–plot of residuals
+sm.qqplot(innovations, line="45", fit=True, ax=ax_qq)   # send it to the right axes
+ax_qq.set_title("QQ-Plot of One-Step Residuals")
+
+# 3) ACF of residuals
+plot_acf(innovations, lags=lags, ax=ax_acf)
+ax_acf.set_title("ACF of 1‑Step Residuals")
+
+# 4) PACF of residuals
+plot_pacf(innovations, lags=lags, ax=ax_pacf, method="ywm")
+ax_pacf.set_title("PACF of 1‑Step Residuals")
+
+plt.tight_layout()
+plt.savefig(f"{PARENT_DIR}/images/2.2/diagnostic_2x2.png")
+plt.show()
