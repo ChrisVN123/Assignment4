@@ -66,7 +66,7 @@ def negative_log_likelihood(theta, y, u):
 # Model estimation
 def estimate_model(y, u):
     # Parameters: A, B1, B2, B3, C, Q, R, x0, e
-    initial_guess = np.array([0.9, 0.1, 0.1, 0.1, 1.0, 0.1, 0.1, 20.0, 0.0])
+    initial_guess = np.array([-10.9, -10.1, -10.1, -10.1, -11.0, -10.1, -10.1, -10.0, -10.0])
     lower_bounds = [-1.5] * 5 + [1e-6, 1e-6, -np.inf, -np.inf]
     upper_bounds = [1.5] * 5 + [np.inf, np.inf, np.inf, np.inf]
 
