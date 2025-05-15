@@ -35,7 +35,7 @@ def kf_logLik_dt(params,y,U):
     L=0
     for t in range(1, n):
         # Predict
-        x_pred[t] = A * x_filt[t-1] + B.dot(U[t])
+        x_pred[t] = A * x_filt[t-1] + B.dot(U[t-1])
         P_pred[t] = A * P_filt[t-1] * A.transpose() + Q
 
         # Innovation
@@ -81,7 +81,7 @@ bounds = [
 
 
 A = (np.random.rand()-0.5)*2
-B = (np.random.rand(3)-0.5)*2
+B = (np.random.rand(3))*2
 C = (np.random.rand()-0.5)*2
 Q = (np.random.rand()-0.5)*2
 R = (np.random.rand()-0.5)*2
@@ -94,7 +94,7 @@ start = np.concatenate([
     [C, Q, R,  # 4–6
      X0, P0]   # 7–8
 ])
-
+np.array([0.9, 0.1, 0.1, 0.1, 1.0, 0.1, 0.1, 20.0])
 result = estimate_dt(df,start,bounds)
 
 y = df["Y"].values
@@ -139,8 +139,6 @@ axes[1].set_title("PACF of 1-step residuals")
 
 plt.tight_layout()
 plt.savefig(f"{PARENT_DIR}/images/2.2/ACF_PACF.png")
-plt.show()
-
 # 1) QQ–plot of innovations
 plt.figure()
 sm.qqplot(innovations, line="45", fit=True)
@@ -193,4 +191,3 @@ ax_pacf.set_title("PACF of 1‑Step Residuals")
 
 plt.tight_layout()
 plt.savefig(f"{PARENT_DIR}/images/2.2/diagnostic_2x2.png")
-plt.show()
