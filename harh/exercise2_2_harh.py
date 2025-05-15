@@ -35,7 +35,7 @@ def kf_logLik_dt(params,y,U):
     L=0
     for t in range(1, n):
         # Predict
-        x_pred[t] = A * x_filt[t-1] + B.dot(U[t-1])
+        x_pred[t] = A * x_filt[t-1] + B.dot(U[t-1]) 
         P_pred[t] = A * P_filt[t-1] * A.transpose() + Q
 
         # Innovation
@@ -83,8 +83,8 @@ bounds = [
 A = (np.random.rand()-0.5)*2
 B = (np.random.rand(3))*2
 C = (np.random.rand()-0.5)*2
-Q = (np.random.rand()-0.5)*2
-R = (np.random.rand()-0.5)*2
+Q = 1
+R = 1
 X0 = np.random.rand()+19.5
 P0 = 200
 df = raw
@@ -94,7 +94,6 @@ start = np.concatenate([
     [C, Q, R,  # 4–6
      X0, P0]   # 7–8
 ])
-np.array([0.9, 0.1, 0.1, 0.1, 1.0, 0.1, 0.1, 20.0])
 result = estimate_dt(df,start,bounds)
 
 y = df["Y"].values
