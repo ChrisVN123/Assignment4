@@ -8,7 +8,7 @@ df = pd.read_csv("transformer_data.csv")
 matrix = df.to_numpy()
 u = matrix[:, 2:]  # Use last three columns as exogenous inputs
 Y = df["Y"].values
-
+print(np.random.normal(0,0.01))
 # Optional: Normalize input and output for better optimization
 # Y = (Y - np.mean(Y)) / np.std(Y)
 # u = (u - np.mean(u, axis=0)) / np.std(u, axis=0)
@@ -35,19 +35,18 @@ def kalman_filter(y, u, theta):
     P_filt = np.zeros(n)
     log_likelihoods = np.zeros(n)
 
-    # Initialization
     x_filt[0] = x0
-    P_filt[0] = 1.0  # Could be estimated too
+    P_filt[0] = 1.0  # Optionally make this large or parameterize
 
     for t in range(1, n):
         # Predict
-        x_pred[t] = A * x_filt[t-1] + np.dot(B, u[t])
+        x_pred[t] = A * x_filt[t-1] + np.dot(B, u[t-1])
         P_pred[t] = A * P_filt[t-1] * A + Q
 
         # Update
         y_pred = C * x_pred[t] + e
         innovation = y[t] - y_pred
-        S_t = C * P_pred[t] * C + R
+        S_t = C * P_pred[t] * C + R + 1e-8
         K_t = P_pred[t] * C / S_t
 
         x_filt[t] = x_pred[t] + K_t * innovation
@@ -57,6 +56,7 @@ def kalman_filter(y, u, theta):
         log_likelihoods[t] = -0.5 * (np.log(2 * np.pi) + np.log(S_t) + innovation**2 / S_t)
 
     return log_likelihoods, x_filt
+
 
 # Negative log-likelihood for optimization
 def negative_log_likelihood(theta, y, u):
@@ -81,10 +81,9 @@ print("Estimated parameters:", result.x)
 
 # Run filter with estimated parameters
 log_lik, x_filtered = kalman_filter(Y, u, result.x)
-
-C = result.x[4]
-e = result.x[8]
+A, B, C, Q, R, x0, e = unpack_parameters(result.x)
 Y_pred = C * x_filtered + e
+
 
 plt.plot(Y, label="Observed")
 plt.plot(Y_pred, label="Filtered prediction ($C \\cdot x + e$)")
