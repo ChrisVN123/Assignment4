@@ -1,7 +1,9 @@
-/__pycache__/
+
 /.pytest_cache/
 /.mypy_cache/
 /.pytest/
 /.coverage
 /.coverage.*
 /.hypothesis/
+# ignore all __pycache__ directories anywhere
+__pycache__/
