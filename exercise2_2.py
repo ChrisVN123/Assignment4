@@ -1,8 +1,14 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 from scipy.optimize import minimize
-from exercise1_2 import simulated
+
+df = pd.read_csv("transformer_data.csv")
+matrix = df.to_numpy()
+u = matrix[:,2:] #we only want the last three columns
+
+
+print(u)
 
 
 def kalman_filter(y, theta):
@@ -52,36 +58,3 @@ def optimal_kalman(initial_guess, train_data, plotting=False):
 
     result = minimize(negative_log_likelihood, initial_guess, args=(train_data,), bounds=bounds)
     theta_hat = result.x
-
-    if plotting:
-        _, filtered_states, _ = kalman_filter(train_data, theta_hat)
-        plt.plot(train_data, label='Observed')
-        plt.plot(filtered_states, label='Filtered')
-        plt.legend()
-        plt.title("Kalman Filter Fit")
-        plt.show()
-
-    return theta_hat
-
-
-# Allocate result storage: rows = iterations, cols = [a, b, Q]
-theta_results = np.zeros((100, 3))
-
-# Loop over simulations
-for i in range(100):
-    np.random.seed(i + 2025)  # Slightly different seed each time
-    X, Y = simulated(a=1, b=0.9, sigma1=5)
-    initial_theta = [0.5, 0.5, 0.5]
-    if i == 1:
-        optimal_kalman(initial_theta, X, plotting=True)
-    theta_est = optimal_kalman(initial_theta, X, plotting=False)
-    theta_results[i, :] = theta_est
-
-# Show results
-# Boxplot
-plt.boxplot([theta_results[:, 0], theta_results[:, 1], theta_results[:, 2]])
-plt.xticks([1, 2, 3], ['a (mean reversion)', 'b (long-term mean)', 'Q (state noise)'])
-plt.ylabel('Estimated Value')
-plt.title('Distribution of Estimated Kalman Parameters over 100 Simulations')
-plt.grid(True)
-plt.show()
