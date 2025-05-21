@@ -106,7 +106,6 @@ x_pred, P_pred, innovations, S, x_filt, P_filt, neglogLik = kf_logLik_dt(result.
 print("done")
 
 Y_pred = C*x_pred[1:]
-R = result.x[6]
 residuals = y[1:] - Y_pred
 stderr = np.sqrt(C**2 * P_pred[1:] + R)
 Y_pred_lower = Y_pred-1.96*stderr
@@ -170,11 +169,9 @@ info = pd.DataFrame({
 info.to_csv(f"{PARENT_DIR}/images/2.2/info_criteria.csv", index=False)
 
 ####
-unpack_params(result.x)
-A,B,C,Q,R,X0
 params = pd.DataFrame({
-    "params": ["A", "B", "C", "Q", "R", "x0",],
-    "value": [A, B, C, Q, R, X0]
+    "params": ["A", "B", "C", "Q", "R", "x0","P0"],
+    "value": [A, B, C, Q, R, X0,P0]
 })
 params.to_csv(f"images/2.2/params.csv", index=False)
 # ------------------------------------------------------------------

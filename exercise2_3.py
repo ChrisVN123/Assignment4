@@ -15,15 +15,16 @@ Y = df["Y"].values
 # 2D Kalman Filter Setup
 # ------------------------------
 def unpack_parameters(theta):
-    A = theta[0:4].reshape(2, 2)         # A: 2x2
-    B = theta[4:10].reshape(2, 3)        # B: 2x3     # C: 1x2
-    Q = np.diag(np.exp(theta[10:12]))    # Q: diagonal 2x2, exponentiated for positivity
-    R = np.exp(theta[12])               # R: scalar, exponentiated
-    x0 = theta[13:15]                   # Initial state: 2D
-    return A, B, Q, R, x0
+    A = theta[0:4].reshape(2, 2)          # A: 2×2
+    B = theta[4:10].reshape(2, 3)         # B: 2×3
+    Q = np.diag(np.exp(theta[10:12]))     # Q: diag, positiveness via exp
+    R = np.exp(theta[12])                 # R: scalar, positive
+    x0 = theta[13:15]                     # initial state (2,)
+    P0 = theta[15:19].reshape(2, 2)       # initial covariance (2×2)
+    return A, B, Q, R, x0, P0
 
 def kalman_filter(y, u, theta,C):
-    A, B, Q, R, x0 = unpack_parameters(theta)
+    A, B, Q, R, x0, P0 = unpack_parameters(theta)
     n = len(y)
     x_pred = np.zeros((n, 2))
     P_pred = np.zeros((n, 2, 2))
@@ -33,7 +34,7 @@ def kalman_filter(y, u, theta,C):
     innov   = np.zeros(n)
     S_t = np.zeros(n)
     x_filt[0] = x0
-    P_filt[0] = np.eye(2)
+    P_filt[0] = P0
 
     for t in range(1, n):
         # Predict
@@ -61,15 +62,23 @@ def negative_log_likelihood(theta, y, u, c):
 def estimate_model(y, u):
     # Initial values
     theta0 = np.array([
-        1, 0.0, 0.0, 1,            # A (flattened)
-        0.1, 0.0, 0.0,                 # B row 1
-        0.0, 0.1, 0.0,                 # B row 2
-        1, 1,      # Q diag (log for positivity)
-        1,                   # R (log for positivity)
-        23.5, 23.5                      # x0
+        1, 0.0, 0.0, 1,             # A (4)
+        0.1, 0.0, 0.0,              # B row 1 (3)
+        0.0, 0.1, 0.0,              # B row 2 (3) → total B = 6
+        1, 1,                       # log‑diag(Q)  (2)
+        1,                          # log(R)       (1)
+        23.5, 23.5,                 # x0           (2)
+        1, 0, 0, 1                  # P0 (flattened 2×2, start = I)
     ])
     C = np.array([1, 0]).reshape(1, 2)  
-    bounds = [(-2,2)]*4 + [(-5,5)]*6  + [(None,None)]*5
+    bounds = (
+        [(-2, 2)] * 4 +            # A
+        [(-5, 5)] * 6 +            # B
+        [(None, None)] * 2 +       # log‑diag(Q)
+        [(None, None)] +           # log(R)
+        [(None, None)] * 2 +       # x0
+        [(1e-8, 100)] * 4          # P0 entries
+    )
     result = minimize(negative_log_likelihood, theta0, args=(y, u, C),bounds = bounds,
                       method="L-BFGS-B", options={'maxiter': 5000})
     return result
@@ -81,7 +90,7 @@ theta_hat = result.x
 print("Estimated parameters:", theta_hat)
 
 # Predict
-A, B, Q, R, x0 = unpack_parameters(theta_hat)
+A, B, Q, R, x0, P0 = unpack_parameters(theta_hat)
 C = np.array([1, 0]).reshape(1, 2)  # C: 1x2
 # run filter once more with the MLE
 x_p, P_p, x_filt, _, innov, _, _= kalman_filter(Y, u, theta_hat, C)
@@ -156,7 +165,7 @@ info.to_csv(f"images/2.3/info_criteria.csv", index=False)
 
 
 params = pd.DataFrame({
-    "params": ["A", "B", "C", "Q", "R", "x0",],
-    "value": [A, B, C, Q, R, x0]
+    "params": ["A", "B", "C", "Q", "R", "x0", "P0"],
+    "value": [A, B, C, Q, R, x0, P0]
 })
 params.to_csv(f"images/2.3/params.csv", index=False)
