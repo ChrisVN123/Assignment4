@@ -162,8 +162,8 @@ print(f"RMSE = {RMSE:.2f}")
 
 # (Optionally save to file or DataFrame)
 info = pd.DataFrame({
-    "stat": ["n_obs","n_params","logLik","AIC","BIC"],
-    "value": [n, k, lnL, AIC, BIC]
+    "stat": ["n_obs","n_params","logLik","AIC","BIC","RMSE"],
+    "value": [n, k, lnL, AIC, BIC,RMSE]
 })
 info.to_csv(f"{PARENT_DIR}/images/2.2/info_criteria.csv", index=False)
 
