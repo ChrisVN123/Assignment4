@@ -11,17 +11,16 @@ raw = pd.read_csv(f"{PARENT_DIR}/transformer_data.csv")
 def unpack_params(params):
     A  = params[0]
     B  = params[1:4]        # length-3 vector
-    C  = params[4]
-    Q  = params[5]
-    R  = params[6]
-    X0 = params[7]
-    P0 = params[8]
-    return A,B,C,Q,R,X0,P0
+    Q  = params[4]
+    R  = params[5]
+    X0 = params[6]
+    P0 = params[7]
+    return A,B,Q,R,X0,P0
 
-def kf_logLik_dt(params,y,U):
+def kf_logLik_dt(params,y,U,C):
     #Some adjustable params
         # unpack
-    A,B,C,Q,R,X0,P0 = unpack_params(params)
+    A,B,Q,R,X0,P0 = unpack_params(params)
 
     # Allocate arrays
     n = len(y)
@@ -50,19 +49,20 @@ def kf_logLik_dt(params,y,U):
 
         # Update
         x_filt[t] = x_pred[t] + K_t * innovations[t]
-        P_filt[t] = (1 - K_t*C) * P_pred[t]
+        P_filt[t] = ((1 - K_t*C) * P_pred[t]).item()
         L += -1/2*np.sum(np.log(2*np.pi*S[t])+innovations[t]**2*(S[t]**(-1)))
 
     return x_pred, P_pred, innovations, S, x_filt, P_filt, -L
-def objective(params,y,U):
-    _, _, _, _, _, _, L_val = kf_logLik_dt(params,y,U)
+def objective(params,y,U,C):
+    _, _, _, _, _, _, L_val = kf_logLik_dt(params,y,U,C)
     return L_val
 
 def estimate_dt(df,start_guess,bounds):
     y = df["Y"].values
     U = df[["Ta","S","I"]].values
+    C = np.array([1])
     result = minimize(
-        fun=lambda p: objective(p, y, U),
+        fun=lambda p: objective(p, y, U,C),
         x0=start_guess,
         method="L-BFGS-B",
         bounds=bounds
@@ -74,7 +74,6 @@ bounds = [
     (-1,1),  # B1
     (-1,1),  # B2
     (-1,1),  # B3
-    (0,1),  # C
     (1e-8,None),  # Q (variance ≥ 0)
     (1e-8,None),  # R
     (0,100),      # X0
@@ -83,30 +82,30 @@ bounds = [
 
 
 
-A = (np.random.rand()-0.5)*2
-B = (np.random.rand(3))*2
-C = (np.random.rand()-0.5)*2
+A = 1
+B = np.array([1,1,1])
 Q = 1
 R = 1
-X0 = np.random.rand()+19.5
+X0 = 23.5
 P0 = 1
 df = raw
 start = np.concatenate([
     [A],       # 0
     B,         # 1–3
-    [C, Q, R,  # 4–6
+    [Q, R,  # 4–6
      X0, P0]   # 7–8
 ])
 result = estimate_dt(df,start,bounds)
 
 y = df["Y"].values
 U = df[["Ta","S","I"]].values
-x_pred, P_pred, innovations, S, x_filt, P_filt, neglogLik = kf_logLik_dt(result.x,y,U)
+C = np.array([1])
+x_pred, P_pred, innovations, S, x_filt, P_filt, neglogLik = kf_logLik_dt(result.x,y,U,C)
 print("done")
 
-Y_pred = result.x[4]*x_pred[1:]
+Y_pred = C*x_pred[1:]
 R = result.x[6]
-C = result.x[4]
+residuals = y[1:] - Y_pred
 stderr = np.sqrt(C**2 * P_pred[1:] + R)
 Y_pred_lower = Y_pred-1.96*stderr
 Y_pred_higher  =  Y_pred+1.96*stderr
@@ -122,7 +121,7 @@ plt.savefig(f"{PARENT_DIR}/images/2.2/ex2_2_confidence_int_prediction.png")
 plt.clf()
 
 #Simple plot of innovation
-plt.plot(innovations, label = "residuals")
+plt.plot(innovations[1:], label = "residuals")
 plt.title("Residuals of 1 step predictions")
 plt.savefig(f"{PARENT_DIR}/images/2.2/Residuals.png")
 plt.clf()
@@ -132,18 +131,18 @@ lags = 40  # or however many lags you want
 fig, axes = plt.subplots(2, 1, figsize=(8, 6))
 
 # ACF
-plot_acf(innovations, lags=lags, ax=axes[0])
+plot_acf(innovations[1:], lags=lags, ax=axes[0])
 axes[0].set_title("ACF of 1-step residuals")
 
 # PACF
-plot_pacf(innovations, lags=lags, ax=axes[1], method="ywm")
+plot_pacf(innovations[1:], lags=lags, ax=axes[1], method="ywm")
 axes[1].set_title("PACF of 1-step residuals")
 
 plt.tight_layout()
 plt.savefig(f"{PARENT_DIR}/images/2.2/ACF_PACF.png")
 # 1) QQ–plot of innovations
 plt.figure()
-sm.qqplot(innovations, line="45", fit=True)
+sm.qqplot(innovations[1:], line="45", fit=True)
 plt.title("QQ-Plot of One‐Step Residuals")
 plt.savefig(f"{PARENT_DIR}/images/2.2/QQplot_residuals.png")
 plt.clf()
@@ -155,9 +154,11 @@ lnL = -neglogLik
 
 AIC = 2*k - 2*lnL
 BIC = k*np.log(n) - 2*lnL
-
+RMSE = np.sqrt(np.mean(residuals**2))
 print(f"AIC = {AIC:.2f}")
 print(f"BIC = {BIC:.2f}")
+print(f"RMSE = {RMSE:.2f}")
+
 
 # (Optionally save to file or DataFrame)
 info = pd.DataFrame({

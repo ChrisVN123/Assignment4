@@ -18,17 +18,15 @@ Y = df["Y"].values
 # ------------------------------
 def unpack_parameters(theta):
     A = theta[0:4].reshape(2, 2)         # A: 2x2
-    B = theta[4:10].reshape(2, 3)        # B: 2x3
-    C = theta[10:12].reshape(1, 2)       # C: 1x2
-    Q = np.diag(np.exp(theta[12:14]))    # Q: diagonal 2x2, exponentiated for positivity
-    R = np.exp(theta[14])               # R: scalar, exponentiated
-    x0 = theta[15:17]                   # Initial state: 2D
-    return A, B, C, Q, R, x0
+    B = theta[4:10].reshape(2, 3)        # B: 2x3     # C: 1x2
+    Q = np.diag(np.exp(theta[10:12]))    # Q: diagonal 2x2, exponentiated for positivity
+    R = np.exp(theta[12])               # R: scalar, exponentiated
+    x0 = theta[13:15]                   # Initial state: 2D
+    return A, B, Q, R, x0
 
-def kalman_filter(y, u, theta):
-    A, B, C, Q, R, x0 = unpack_parameters(theta)
+def kalman_filter(y, u, theta,C):
+    A, B, Q, R, x0 = unpack_parameters(theta)
     n = len(y)
-
     x_pred = np.zeros((n, 2))
     P_pred = np.zeros((n, 2, 2))
     x_filt = np.zeros((n, 2))
@@ -58,8 +56,8 @@ def kalman_filter(y, u, theta):
 
     return x_pred, P_pred, x_filt, P_filt, innov, S_t, log_likelihood
 
-def negative_log_likelihood(theta, y, u):
-    *_, log_likelihood = kalman_filter(y, u, theta)
+def negative_log_likelihood(theta, y, u, c):
+    *_, log_likelihood = kalman_filter(y, u, theta, c)
     return -log_likelihood
 
 def estimate_model(y, u):
@@ -68,13 +66,13 @@ def estimate_model(y, u):
         1, 0.0, 0.0, 1,            # A (flattened)
         0.1, 0.0, 0.0,                 # B row 1
         0.0, 0.1, 0.0,                 # B row 2
-        1, 0,                      # C
         1, 1,      # Q diag (log for positivity)
         1,                   # R (log for positivity)
-        20.0, 20.0                      # x0
+        23.5, 23.5                      # x0
     ])
-    bounds = [(-2,2)]*4 + [(-5,5)]*6 + [(-5,5)]*2 + [(None,None)]*5
-    result = minimize(negative_log_likelihood, theta0, args=(y, u),bounds = bounds,
+    C = np.array([1, 0]).reshape(1, 2)  
+    bounds = [(-2,2)]*4 + [(-5,5)]*6  + [(None,None)]*5
+    result = minimize(negative_log_likelihood, theta0, args=(y, u, C),bounds = bounds,
                       method="L-BFGS-B", options={'maxiter': 5000})
     return result
 
@@ -85,16 +83,19 @@ theta_hat = result.x
 print("Estimated parameters:", theta_hat)
 
 # Predict
-A, B, C, Q, R, x0 = unpack_parameters(theta_hat)
+A, B, Q, R, x0 = unpack_parameters(theta_hat)
+C = np.array([1, 0]).reshape(1, 2)  # C: 1x2
 # run filter once more with the MLE
-x_p, P_p, x_filt, _, innov, _, _= kalman_filter(Y, u, theta_hat)
+x_p, P_p, x_filt, _, innov, _, _= kalman_filter(Y, u, theta_hat, C)
 
+Y_pred = (C @ x_p[1:].T).ravel()  
+residuals = Y[1:] - Y_pred
 cols = cm.rainbow(np.linspace(0, 1, 3))   # three distinct colours
 
 fig, ax1 = plt.subplots(figsize=(10, 5))
 
 # -- latent states (primary axis) ---------------------------------------------
-ax1.plot(df["time"], x_filt[:, 1], label=r"$x_{2,t}$")
+ax1.plot(df["time"], x_filt[:, 0], label=r"$x_{1,t}$")
 
 # exogenous inputs Ta and S on the primary axis
 ax1.plot(df["time"], df["Ta"], color=cols[0], ls="--", alpha=0.5,
@@ -103,15 +104,15 @@ ax1.plot(df["time"], df["I"],  color=cols[1], ls="--", alpha=0.5,
          label=r"$\Phi_{I,t}$")
 
 ax1.set_xlabel("Time")
-ax1.set_ylabel("State / Inputs")                    
+ax1.set_ylabel(r"$x_{1,t}$, $T_{a,t}$, $\Phi_{I,t}$ (primary axis)")                    
 ax1.set_title("Kalman-filter state estimates and exogenous inputs")
 
 # -- secondary axis for I ------------------------------------------------------
 ax2 = ax1.twinx()
-ax2.plot(df["time"], x_filt[:, 0], label=r"$x_{1,t}$")
+ax2.plot(df["time"], x_filt[:, 1], label=r"$x_{2,t}$",color = "orange")
 ax2.plot(df["time"], df["S"], color=cols[2], ls="--", alpha=0.5,
          label=r"$\Phi_{s,t}$")
-ax2.set_ylabel(r"$\Phi_{s,t}$ (secondary axis)")
+ax2.set_ylabel(r"$x_{2,t}$, $\Phi_{s,t}$ (secondary axis)")
 
 # -- combined legend -----------------------------------------------------------
 handles1, labels1 = ax1.get_legend_handles_labels()
@@ -141,6 +142,26 @@ params = pd.DataFrame({
     "value": [A, B, C, Q, R, x0]
 })
 params.to_csv(f"images/2.4/params.csv", index=False)
+
+# 2) AIC and BIC
+n = len(Y)
+k = len(theta_hat)
+lnL =LL = -negative_log_likelihood(theta_hat, Y, u, C)
+
+
+AIC = 2*k - 2*lnL
+BIC = k*np.log(n) - 2*lnL
+RMSE = np.sqrt(np.mean(residuals**2))
+print(f"AIC = {AIC:.2f}")
+print(f"BIC = {BIC:.2f}")
+print(f"RMSE = {RMSE:.2f}")
+# (Optionally save to file or DataFrame)
+info = pd.DataFrame({
+    "stat": ["n_obs","n_params","logLik","AIC","BIC", "RMSE"],
+    "value": [n, k, lnL, AIC, BIC, RMSE]
+})
+info.to_csv(f"images/2.4/info_criteria.csv", index=False)
+
 # # ------------------------------
 
 # # point forecast of yₜ
