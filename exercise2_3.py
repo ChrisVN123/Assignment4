@@ -21,11 +21,10 @@ def unpack_parameters(theta):
     Q = np.diag(np.exp(theta[12:14]))    # Q: diagonal 2x2, exponentiated for positivity
     R = np.exp(theta[14])               # R: scalar, exponentiated
     x0 = theta[15:17]                   # Initial state: 2D
-    e = theta[17]                       # Observation bias
-    return A, B, C, Q, R, x0, e
+    return A, B, C, Q, R, x0
 
 def kalman_filter(y, u, theta):
-    A, B, C, Q, R, x0, e = unpack_parameters(theta)
+    A, B, C, Q, R, x0 = unpack_parameters(theta)
     n = len(y)
 
     x_pred = np.zeros((n, 2))
@@ -44,7 +43,7 @@ def kalman_filter(y, u, theta):
         P_pred[t] = A @ P_filt[t-1] @ A.T + Q
 
         # Update
-        y_pred = C @ x_pred[t] + e
+        y_pred = C @ x_pred[t]
         innov[t] = (y[t] - y_pred).item()
         S_t[t] = ((C @ P_pred[t] @ C.T) + R).item()
         K_t = P_pred[t] @ C.T / S_t[t]
@@ -64,19 +63,19 @@ def negative_log_likelihood(theta, y, u):
 def estimate_model(y, u):
     # Initial values
     theta0 = np.array([
-        0.8, 0.0, 0.0, 0.7,            # A (flattened)
+        1, 0.0, 0.0, 1,            # A (flattened)
         0.1, 0.0, 0.0,                 # B row 1
         0.0, 0.1, 0.0,                 # B row 2
-        1.0, 0.0,                      # C
-        0.1, 0.1,      # Q diag (log for positivity)
-        0.1,                   # R (log for positivity)
-        0.0, 0.0,                      # x0
-        0.0                            # e
+        1, 0,                      # C
+        1, 1,      # Q diag (log for positivity)
+        1,                   # R (log for positivity)
+        20.0, 20.0                      # x0
     ])
-    bounds = [(-2,2)]*4 + [(-5,5)]*6 + [(-5,5)]*2 + [(None,None)]*6
+    bounds = [(-2,2)]*4 + [(-5,5)]*6 + [(-5,5)]*2 + [(None,None)]*5
     result = minimize(negative_log_likelihood, theta0, args=(y, u),bounds = bounds,
                       method="L-BFGS-B", options={'maxiter': 5000})
     return result
+
 
 # Estimate
 result = estimate_model(Y, u)
@@ -84,14 +83,14 @@ theta_hat = result.x
 print("Estimated parameters:", theta_hat)
 
 # Predict
-A, B, C, Q, R, x0, e = unpack_parameters(theta_hat)
+A, B, C, Q, R, x0 = unpack_parameters(theta_hat)
 # run filter once more with the MLE
-x_p, P_p, _, _, innov, _, _ = kalman_filter(Y, u, theta_hat)
+x_p, P_p, x_filt, _, innov, _, _= kalman_filter(Y, u, theta_hat)
 
 # point forecast of yₜ
-Y_pred = (C @ x_p.T).ravel() + e  
-residuals = Y - Y_pred
-stderr = np.sqrt((C @ P_p @ C.T).ravel() + R)
+Y_pred = (C @ x_p[1:].T).ravel()  
+residuals = Y[1:] - Y_pred
+stderr = np.sqrt((C @ P_p[1:] @ C.T).ravel() + R)
 Y_pred_lower = Y_pred-1.96*stderr
 Y_pred_higher  =  Y_pred+1.96*stderr
 
@@ -101,11 +100,11 @@ Y_pred_higher  =  Y_pred+1.96*stderr
 #Simple conf interval with true y
 plt.plot(Y_pred_lower, label = "Conf interval", color = "black", linestyle='-',linewidth=0.5)   
 plt.plot(Y_pred_higher, color = "black", linestyle='-',linewidth=0.5)
-plt.plot(df["Y"], label="True $y_t$")
+plt.plot(df["Y"][1:], label="True $y_t$")
 plt.plot(Y_pred, label="$\\hat{Y}_{t+1|t}$", linestyle='-.')
 plt.legend()
 plt.title("Kalman Filtering Results (2d)")
-plt.savefig(f"images/2.3/Conf_interval_1step.png")
+plt.savefig(f"images/2.3/ex2_3_confidence_int_prediction.png")
 plt.clf()
 
 
@@ -133,7 +132,7 @@ axes[1, 1].set_title("QQ-plot of Residuals")
 axes[1, 1].grid()
 
 plt.tight_layout()
-plt.savefig("images/2.3/stats.png")
+plt.savefig("images/2.3/ex2_3_stats.png")
 
 
 # 2) AIC and BIC

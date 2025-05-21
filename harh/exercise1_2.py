@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-def simulated(a=1,b=0.9,sigma1=1,v=None):
+def simulated(a=0.9,b=1,sigma1=1,v=None):
     #parameters
     sigma2 = 1  
     X0 = 5
@@ -32,6 +32,7 @@ def simulated(a=1,b=0.9,sigma1=1,v=None):
 X,Y = simulated()
 #plotting
 if __name__ == "__main__":
+    np.random.seed(2025)
     plt.figure(figsize=(10, 6))
     plt.plot(X, label="$X_t$ (true state)", linewidth=2)
     plt.plot(Y, label="$Y_t$ (observed)", linestyle='--')

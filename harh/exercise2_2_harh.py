@@ -89,7 +89,7 @@ C = (np.random.rand()-0.5)*2
 Q = 1
 R = 1
 X0 = np.random.rand()+19.5
-P0 = 200
+P0 = 1
 df = raw
 start = np.concatenate([
     [A],       # 0
@@ -104,21 +104,21 @@ U = df[["Ta","S","I"]].values
 x_pred, P_pred, innovations, S, x_filt, P_filt, neglogLik = kf_logLik_dt(result.x,y,U)
 print("done")
 
-Y_pred = result.x[4]*x_pred
+Y_pred = result.x[4]*x_pred[1:]
 R = result.x[6]
 C = result.x[4]
-stderr = np.sqrt(C**2 * P_pred + R)
+stderr = np.sqrt(C**2 * P_pred[1:] + R)
 Y_pred_lower = Y_pred-1.96*stderr
 Y_pred_higher  =  Y_pred+1.96*stderr
 
 #Simple conf interval with true y
 plt.plot(Y_pred_lower, label = "Conf interval", color = "black", linestyle='-',linewidth=0.5)   
 plt.plot(Y_pred_higher, color = "black", linestyle='-',linewidth=0.5)
-plt.plot(df["Y"], label="True $y_t$")
+plt.plot(df["Y"][1:], label="True $y_t$")
 plt.plot(Y_pred, label="$\\hat{Y}_{t+1|t}$", linestyle='-.')
 plt.legend()
 plt.title("Kalman Filtering Results (1d)")
-plt.savefig(f"{PARENT_DIR}/images/2.2/Conf_interval_1step.png")
+plt.savefig(f"{PARENT_DIR}/images/2.2/ex2_2_confidence_int_prediction.png")
 plt.clf()
 
 #Simple plot of innovation
@@ -182,21 +182,21 @@ fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 (ax_resid, ax_qq), (ax_acf, ax_pacf) = axes
 
 # 1) One‑step residuals
-ax_resid.plot(innovations, label="Residuals")
+ax_resid.plot(innovations[1:], label="Residuals")
 ax_resid.set_title("Residuals of 1‑Step Predictions")
 ax_resid.legend()
 
 # 2) QQ–plot of residuals
-sm.qqplot(innovations, line="45", fit=True, ax=ax_qq)   # send it to the right axes
+sm.qqplot(innovations[1:], line="45", fit=True, ax=ax_qq)   # send it to the right axes
 ax_qq.set_title("QQ-Plot of One-Step Residuals")
 
 # 3) ACF of residuals
-plot_acf(innovations, lags=lags, ax=ax_acf)
+plot_acf(innovations[1:], lags=lags, ax=ax_acf)
 ax_acf.set_title("ACF of 1‑Step Residuals")
 
 # 4) PACF of residuals
-plot_pacf(innovations, lags=lags, ax=ax_pacf, method="ywm")
+plot_pacf(innovations[1:], lags=lags, ax=ax_pacf, method="ywm")
 ax_pacf.set_title("PACF of 1‑Step Residuals")
 
 plt.tight_layout()
-plt.savefig(f"{PARENT_DIR}/images/2.2/diagnostic_2x2.png")
+plt.savefig(f"{PARENT_DIR}/images/2.2/ex2_2_stats.png")
