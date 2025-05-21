@@ -96,6 +96,8 @@ start = np.concatenate([
      X0, P0]   # 7–8
 ])
 result = estimate_dt(df,start,bounds)
+theta_hat = result.x 
+A,B,Q,R,X0,P0 = unpack_params(theta_hat)
 
 y = df["Y"].values
 U = df[["Ta","S","I"]].values
