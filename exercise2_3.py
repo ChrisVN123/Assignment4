@@ -71,8 +71,8 @@ def estimate_model(y, u):
         1,                   # R (log for positivity)
         20.0, 20.0                      # x0
     ])
-    bounds = [(-2,2)]*4 + [(-5,5)]*6 + [(-5,5)]*2 + [(None,None)]*5
-    result = minimize(negative_log_likelihood, theta0, args=(y, u),bounds = bounds,
+    bounds = [(-2,2)]*4 + [(-5,5)]*6 + [(0,1)] + [(0,1)] + [(None,None)]*5
+    result = minimize(negative_log_likelihood, theta0, args=(y, u,c),bounds = bounds,
                       method="L-BFGS-B", options={'maxiter': 5000})
     return result
 
@@ -143,14 +143,14 @@ lnL =LL = -negative_log_likelihood(theta_hat, Y, u)
 
 AIC = 2*k - 2*lnL
 BIC = k*np.log(n) - 2*lnL
-
+RMSE = np.sqrt(np.mean(residuals**2))
 print(f"AIC = {AIC:.2f}")
 print(f"BIC = {BIC:.2f}")
-
+print(f"RMSE = {RMSE:.2f}")
 # (Optionally save to file or DataFrame)
 info = pd.DataFrame({
-    "stat": ["n_obs","n_params","logLik","AIC","BIC"],
-    "value": [n, k, lnL, AIC, BIC]
+    "stat": ["n_obs","n_params","logLik","AIC","BIC", "RMSE"],
+    "value": [n, k, lnL, AIC, BIC, RMSE]
 })
 info.to_csv(f"images/2.3/info_criteria.csv", index=False)
 

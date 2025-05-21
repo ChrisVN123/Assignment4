@@ -6,6 +6,7 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import scipy.stats as stats
 from matplotlib.pyplot import cm
 
+
 # Load data
 df = pd.read_csv("transformer_data.csv")
 matrix = df.to_numpy()
@@ -22,11 +23,10 @@ def unpack_parameters(theta):
     Q = np.diag(np.exp(theta[12:14]))    # Q: diagonal 2x2, exponentiated for positivity
     R = np.exp(theta[14])               # R: scalar, exponentiated
     x0 = theta[15:17]                   # Initial state: 2D
-    e = theta[17]                       # Observation bias
-    return A, B, C, Q, R, x0, e
+    return A, B, C, Q, R, x0
 
 def kalman_filter(y, u, theta):
-    A, B, C, Q, R, x0, e = unpack_parameters(theta)
+    A, B, C, Q, R, x0 = unpack_parameters(theta)
     n = len(y)
 
     x_pred = np.zeros((n, 2))
@@ -45,7 +45,7 @@ def kalman_filter(y, u, theta):
         P_pred[t] = A @ P_filt[t-1] @ A.T + Q
 
         # Update
-        y_pred = C @ x_pred[t] + e
+        y_pred = C @ x_pred[t]
         innov[t] = (y[t] - y_pred).item()
         S_t[t] = ((C @ P_pred[t] @ C.T) + R).item()
         K_t = P_pred[t] @ C.T / S_t[t]
@@ -68,16 +68,16 @@ def estimate_model(y, u):
         1, 0.0, 0.0, 1,            # A (flattened)
         0.1, 0.0, 0.0,                 # B row 1
         0.0, 0.1, 0.0,                 # B row 2
-        1.0, 0.0,                      # C
+        1, 0,                      # C
         1, 1,      # Q diag (log for positivity)
         1,                   # R (log for positivity)
-        20.0, 20.0,                      # x0
-        0.0                            # e
+        20.0, 20.0                      # x0
     ])
-    bounds = [(-2,2)]*4 + [(-5,5)]*6 + [(-5,5)]*2 + [(None,None)]*6
+    bounds = [(-2,2)]*4 + [(-5,5)]*6 + [(-5,5)]*2 + [(None,None)]*5
     result = minimize(negative_log_likelihood, theta0, args=(y, u),bounds = bounds,
                       method="L-BFGS-B", options={'maxiter': 5000})
     return result
+
 
 # Estimate
 result = estimate_model(Y, u)
@@ -85,16 +85,15 @@ theta_hat = result.x
 print("Estimated parameters:", theta_hat)
 
 # Predict
-A, B, C, Q, R, x0, e = unpack_parameters(theta_hat)
+A, B, C, Q, R, x0 = unpack_parameters(theta_hat)
 # run filter once more with the MLE
-x_p, P_p, x_filt, _, innov, _, _ = kalman_filter(Y, u, theta_hat)
+x_p, P_p, x_filt, _, innov, _, _= kalman_filter(Y, u, theta_hat)
 
 cols = cm.rainbow(np.linspace(0, 1, 3))   # three distinct colours
 
 fig, ax1 = plt.subplots(figsize=(10, 5))
 
 # -- latent states (primary axis) ---------------------------------------------
-ax1.plot(df["time"], x_filt[:, 0], label=r"$x_{1,t}$")
 ax1.plot(df["time"], x_filt[:, 1], label=r"$x_{2,t}$")
 
 # exogenous inputs Ta and S on the primary axis
@@ -109,6 +108,7 @@ ax1.set_title("Kalman-filter state estimates and exogenous inputs")
 
 # -- secondary axis for I ------------------------------------------------------
 ax2 = ax1.twinx()
+ax2.plot(df["time"], x_filt[:, 0], label=r"$x_{1,t}$")
 ax2.plot(df["time"], df["S"], color=cols[2], ls="--", alpha=0.5,
          label=r"$\Phi_{s,t}$")
 ax2.set_ylabel(r"$\Phi_{s,t}$ (secondary axis)")
@@ -135,6 +135,12 @@ A = pd.DataFrame(A)
 A.to_csv("images/2.4/A.csv", index=False)
 B = pd.DataFrame(B)
 B.to_csv("images/2.4/B.csv", index=False)
+
+params = pd.DataFrame({
+    "params": ["A", "B", "C", "Q", "R", "x0",],
+    "value": [A, B, C, Q, R, x0]
+})
+params.to_csv(f"images/2.4/params.csv", index=False)
 # # ------------------------------
 
 # # point forecast of yₜ
